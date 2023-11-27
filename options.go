@@ -67,6 +67,12 @@ func IgnoreTopFunction(f string) Option {
 	})
 }
 
+func IgnoreLessThanOneMinute() Option {
+	return addFilter(func(s stack.Stack) bool {
+		return !strings.Contains(s.State(), "minutes")
+	})
+}
+
 // IgnoreAnyFunction ignores goroutines where the specified function
 // is present anywhere in the stack.
 //

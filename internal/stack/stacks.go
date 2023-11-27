@@ -25,6 +25,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -232,6 +234,25 @@ func All() []Stack {
 // Current returns the stack for the current goroutine.
 func Current() Stack {
 	return getStacks(false)[0]
+}
+
+func UrlToStack(url string) []Stack {
+	response, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(err)
+	}
+	stacks, err := newStackParser(bytes.NewReader(data)).Parse()
+	if err != nil {
+		// Well-formed stack traces should never fail to parse.
+		// If they do, it's a bug in this package.
+		// Panic so we can fix it.
+		panic(fmt.Sprintf("Failed to parse stack trace: %v\n%s", err, data))
+	}
+	return stacks
 }
 
 func getStackBuffer(all bool) []byte {

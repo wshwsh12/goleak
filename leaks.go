@@ -73,6 +73,32 @@ func Find(options ...Option) error {
 	return fmt.Errorf("found unexpected goroutines:\n%s", stacks)
 }
 
+// Find looks for extra goroutines, and returns a descriptive error if
+// any are found.
+func FindWithUrl(url string, options ...Option) error {
+	return FindWithStacks(stack.UrlToStack(url), options...)
+}
+
+func FindWithStacks(stacks []stack.Stack, options ...Option) error {
+	cur := 0
+
+	opts := buildOpts(options...)
+	if opts.cleanup != nil {
+		return errors.New("Cleanup can only be passed to VerifyNone or VerifyTestMain")
+	}
+	retry := true
+	for i := 0; retry; i++ {
+		stacks = filterStacks(stacks, cur, opts)
+
+		if len(stacks) == 0 {
+			return nil
+		}
+		retry = opts.retry(i)
+	}
+
+	return fmt.Errorf("found unexpected goroutines:\n%s", stacks)
+}
+
 type testHelper interface {
 	Helper()
 }
