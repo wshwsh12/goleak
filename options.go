@@ -176,3 +176,9 @@ func isStdLibStack(s stack.Stack) bool {
 	// Using signal.Notify will start a runtime goroutine.
 	return strings.Contains(s.Full(), "runtime.ensureSigM")
 }
+
+func IgnoreLessThanOneMinute() Option {
+	return addFilter(func(s stack.Stack) bool {
+		return !strings.Contains(s.State(), "minutes")
+	})
+}

@@ -25,6 +25,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -64,6 +66,61 @@ func (s Stack) String() string {
 	return fmt.Sprintf(
 		"Goroutine %v in state %v, with %v on top of the stack:\n%s",
 		s.id, s.state, s.firstFunction, s.Full())
+}
+
+func UrlToStack(url string) []Stack {
+	response, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(err)
+	}
+	stacks := getStacksWithBuffer(bytes.NewReader(data))
+	return stacks
+}
+
+func getStacksWithBuffer(reader io.Reader) []Stack {
+	var stacks []Stack
+
+	var curStack *Stack
+	stackReader := bufio.NewReader(reader)
+	for {
+		line, err := stackReader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// We're reading using bytes.NewReader which should never fail.
+			panic("bufio.NewReader failed on a fixed string")
+		}
+
+		// If we see the goroutine header, start a new stack.
+		isFirstLine := false
+		if strings.HasPrefix(line, "goroutine ") {
+			// flush any previous stack
+			if curStack != nil {
+				stacks = append(stacks, *curStack)
+			}
+			id, goState := parseGoStackHeader(line)
+			curStack = &Stack{
+				id:        id,
+				state:     goState,
+				fullStack: &bytes.Buffer{},
+			}
+			isFirstLine = true
+		}
+		curStack.fullStack.WriteString(line)
+		if !isFirstLine && curStack.firstFunction == "" {
+			curStack.firstFunction = parseFirstFunc(line)
+		}
+	}
+
+	if curStack != nil {
+		stacks = append(stacks, *curStack)
+	}
+	return stacks
 }
 
 func getStacks(all bool) []Stack {
