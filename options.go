@@ -182,3 +182,9 @@ func IgnoreLessThanOneMinute() Option {
 		return !strings.Contains(s.State(), "minutes")
 	})
 }
+
+func IgnoreTopFunctionContain(f string) Option {
+	return addFilter(func(s stack.Stack) bool {
+		return strings.Contains(s.FirstFunction(), f)
+	})
+}
